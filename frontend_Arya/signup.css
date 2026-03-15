@@ -1,0 +1,459 @@
+:root {
+  --home-bg:
+    radial-gradient(circle at 80% 6%, rgba(137, 57, 218, 0.35), transparent 36%),
+    radial-gradient(circle at 12% 70%, rgba(40, 83, 255, 0.3), transparent 40%),
+    linear-gradient(130deg, #040a1e 24%, #040c25 54%, #020510 100%);
+  --panel-bg: linear-gradient(155deg, rgba(24, 33, 63, 0.92), rgba(17, 22, 44, 0.94));
+  --line-soft: rgba(157, 179, 235, 0.24);
+  --text-main: #edf3ff;
+  --text-soft: #a8b8d6;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: "Outfit", "Segoe UI", sans-serif;
+  color: var(--text-main);
+  background: var(--home-bg);
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-attachment: fixed;
+}
+
+h1,
+h2,
+h3,
+h4,
+legend {
+  margin: 0;
+  font-family: "Sora", "Trebuchet MS", sans-serif;
+  letter-spacing: -0.02em;
+}
+
+p {
+  margin: 0;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.container {
+  width: min(1180px, 94vw);
+  margin: 0 auto;
+}
+
+.floating-shape {
+  position: fixed;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: -2;
+  filter: blur(7px);
+}
+
+.shape-left {
+  width: 320px;
+  height: 320px;
+  left: -120px;
+  top: 8vh;
+  background: radial-gradient(circle, rgba(109, 71, 255, 0.32), rgba(109, 71, 255, 0));
+}
+
+.shape-right {
+  width: 360px;
+  height: 360px;
+  right: -140px;
+  bottom: 8vh;
+  background: radial-gradient(circle, rgba(70, 158, 255, 0.32), rgba(70, 158, 255, 0));
+}
+
+.signup-header {
+  position: sticky;
+  top: 0;
+  z-index: 60;
+  padding: 0.9rem 0;
+  background: linear-gradient(180deg, rgba(6, 11, 29, 0.94), rgba(6, 11, 29, 0.75));
+  backdrop-filter: blur(10px);
+}
+
+.nav-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  color: #f6f8ff;
+  font-weight: 600;
+  font-size: 0.96rem;
+}
+
+.brand-mark {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.65rem;
+  display: inline-grid;
+  place-items: center;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #ffffff;
+  background: linear-gradient(145deg, #4b68ff, #cc64ff);
+}
+
+.main-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.34rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.main-nav a {
+  border-radius: 999px;
+  padding: 0.5rem 0.95rem;
+  font-size: 0.82rem;
+  color: #d4def6;
+}
+
+.main-nav a:hover {
+  color: #ffffff;
+}
+
+.signup-main {
+  padding: 2.5rem 0 3.3rem;
+}
+
+.signup-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(360px, 0.95fr);
+  gap: 1.35rem;
+  align-items: center;
+}
+
+.hero-side h1 {
+  font-size: clamp(2.3rem, 6vw, 4.8rem);
+  line-height: 0.95;
+}
+
+.hero-side h1 span {
+  display: block;
+  color: transparent;
+  background: linear-gradient(90deg, #d079ff, #8a6aff, #6b61ff);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+.hero-side p {
+  margin-top: 1.7rem;
+  max-width: 600px;
+  font-size: 1.95rem;
+  line-height: 1.35;
+  color: #c0cee5;
+}
+
+.signup-card {
+  border-radius: 1.05rem;
+  border: 1px solid var(--line-soft);
+  background: var(--panel-bg);
+  box-shadow: 0 24px 48px rgba(4, 11, 29, 0.4);
+  padding: 1.15rem;
+}
+
+.signup-card h2 {
+  font-size: 2.2rem;
+}
+
+.signup-sub {
+  margin-top: 0.35rem;
+  color: #a2b5d8;
+  font-size: 0.95rem;
+}
+
+.signup-form {
+  margin-top: 0.95rem;
+  display: grid;
+  gap: 0.72rem;
+}
+
+label span,
+.account-type legend {
+  display: block;
+  margin-bottom: 0.33rem;
+  color: #d7e2f7;
+  font-size: 0.81rem;
+}
+
+input,
+select {
+  width: 100%;
+  border: 1px solid rgba(153, 177, 230, 0.24);
+  border-radius: 0.55rem;
+  background: rgba(255, 255, 255, 0.08);
+  color: #edf3ff;
+  font-family: inherit;
+  font-size: 0.9rem;
+  padding: 0.76rem 0.85rem;
+  outline: none;
+}
+
+input::placeholder {
+  color: #90a4ca;
+}
+
+input:focus,
+select:focus {
+  border-color: rgba(111, 176, 255, 0.72);
+  box-shadow: 0 0 0 2px rgba(66, 150, 255, 0.2);
+}
+
+.custom-select {
+  position: relative;
+}
+
+.custom-select-trigger {
+  width: 100%;
+  border: 1px solid rgba(153, 177, 230, 0.24);
+  border-radius: 0.55rem;
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 0.9rem;
+  padding: 0.76rem 2.2rem 0.76rem 0.85rem;
+  text-align: left;
+  position: relative;
+  cursor: pointer;
+}
+
+.custom-select-trigger::after {
+  content: "";
+  position: absolute;
+  right: 0.9rem;
+  top: 50%;
+  width: 0.5rem;
+  height: 0.5rem;
+  margin-top: -0.42rem;
+  border-right: 2px solid #dce7ff;
+  border-bottom: 2px solid #dce7ff;
+  transform: rotate(45deg);
+  transition: transform 0.2s ease;
+}
+
+.custom-select.open .custom-select-trigger::after {
+  transform: rotate(-135deg) translate(-2px, -2px);
+}
+
+.custom-select-trigger:focus {
+  border-color: rgba(111, 176, 255, 0.72);
+  box-shadow: 0 0 0 2px rgba(66, 150, 255, 0.2);
+}
+
+.custom-select-menu {
+  position: absolute;
+  top: calc(100% + 0.34rem);
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding: 0.28rem;
+  list-style: none;
+  border: 1px solid rgba(153, 177, 230, 0.28);
+  border-radius: 0.5rem;
+  background: linear-gradient(155deg, rgba(27, 43, 82, 0.97), rgba(16, 26, 52, 0.98));
+  backdrop-filter: blur(10px);
+  box-shadow: 0 12px 28px rgba(2, 7, 21, 0.48);
+  z-index: 60;
+  display: none;
+}
+
+.custom-select.open .custom-select-menu {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.custom-option {
+  width: 100%;
+  border: none;
+  border-radius: 0.38rem;
+  background: transparent;
+  color: #ffffff;
+  font: inherit;
+  font-size: 0.9rem;
+  text-align: left;
+  padding: 0.58rem 0.65rem;
+  cursor: pointer;
+}
+
+.custom-option:hover,
+.custom-option.selected {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.password-wrap {
+  position: relative;
+}
+
+.password-wrap button {
+  position: absolute;
+  right: 0.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  border: 1px solid rgba(153, 177, 230, 0.24);
+  border-radius: 999px;
+  min-width: 3rem;
+  height: 1.55rem;
+  padding: 0 0.5rem;
+  background: rgba(255, 255, 255, 0.1);
+  color: #d4def5;
+  font-size: 0.68rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.password-wrap button:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.account-type {
+  margin: 0;
+  padding: 0;
+  border: none;
+  display: grid;
+  gap: 0.42rem;
+}
+
+.account-type legend {
+  margin-bottom: 0.05rem;
+}
+
+.radio-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.radio-row input {
+  width: auto;
+  margin: 0;
+}
+
+.radio-row span {
+  margin: 0;
+  color: #c3d0e8;
+  font-size: 0.9rem;
+}
+
+.terms-row {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 0.45rem;
+}
+
+.terms-row input {
+  width: auto;
+  margin-top: 0.15rem;
+}
+
+.terms-row span {
+  margin: 0;
+  color: #b9c7e0;
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.terms-row a {
+  color: #9a6bff;
+}
+
+.create-btn {
+  border: none;
+  border-radius: 0.6rem;
+  padding: 0.78rem 0.8rem;
+  color: #f5fbff;
+  font-size: 0.95rem;
+  font-weight: 700;
+  background: linear-gradient(90deg, #8a48ff, #4c8dff);
+  cursor: pointer;
+}
+
+.create-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.82;
+}
+
+.form-message {
+  min-height: 1.1rem;
+  margin: 0;
+  font-size: 0.82rem;
+  color: #9db1d8;
+}
+
+.form-message.error {
+  color: #ff8c98;
+}
+
+.form-message.success {
+  color: #8be7bb;
+}
+
+.login-note {
+  margin-top: 0.2rem;
+  text-align: center;
+  color: #b3c3df;
+  font-size: 0.92rem;
+}
+
+.login-note a {
+  color: #9a6bff;
+  font-weight: 600;
+}
+
+@media (max-width: 1060px) {
+  .main-nav {
+    display: none;
+  }
+
+  .signup-layout {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+
+  .hero-side p {
+    max-width: 100%;
+  }
+
+  .signup-card {
+    max-width: 560px;
+  }
+}
+
+@media (max-width: 700px) {
+  .signup-header {
+    position: static;
+  }
+
+  .brand {
+    font-size: 0.86rem;
+  }
+
+  .signup-main {
+    padding-top: 1.7rem;
+  }
+
+  .hero-side p {
+    font-size: 0.96rem;
+  }
+
+  .signup-card h2 {
+    font-size: 1.65rem;
+  }
+}

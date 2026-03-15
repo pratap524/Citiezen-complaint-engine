@@ -1,0 +1,14 @@
+# Secret files
+.env
+
+# Database files
+data/
+
+# Dependencies
+node_modules/
+
+# Build files
+frontend_Arya/dist/
+
+# System files
+.DS_Store
