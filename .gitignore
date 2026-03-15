@@ -12,3 +12,7 @@ frontend_Arya/dist/
 
 # System files
 .DS_Store
+
+# Local ML/model artifacts
+local_library/*.bin
+*.backup
