@@ -8,6 +8,12 @@ import authRoutes from "./routes/authRoutes.js";
 dotenv.config();
 
 const app = express();
+const DB_CONNECT_BASE_DELAY_MS = 2000;
+const DB_CONNECT_MAX_DELAY_MS = 30000;
+
+let reconnectTimer = null;
+let reconnectAttempts = 0;
+let isConnecting = false;
 
 // Middleware
 app.use(express.json());
@@ -19,21 +25,70 @@ app.use(
 
 // MongoDB connection
 const MONGODB_URI = process.env.MONGODB_URI;
-if (!MONGODB_URI) {
-  console.error("❌ MONGODB_URI is not set. Complaint APIs will return 503 until MongoDB is configured.");
-} else {
-  mongoose
-    .connect(MONGODB_URI, {
+const scheduleReconnect = () => {
+  if (reconnectTimer || !MONGODB_URI || mongoose.connection.readyState === 1) {
+    return;
+  }
+
+  const nextDelay = Math.min(
+    DB_CONNECT_BASE_DELAY_MS * (2 ** reconnectAttempts),
+    DB_CONNECT_MAX_DELAY_MS
+  );
+
+  reconnectAttempts += 1;
+  console.warn(`⚠️ MongoDB disconnected. Retrying in ${nextDelay / 1000}s (attempt ${reconnectAttempts})...`);
+
+  reconnectTimer = setTimeout(async () => {
+    reconnectTimer = null;
+    await connectMongo();
+  }, nextDelay);
+};
+
+const connectMongo = async () => {
+  if (!MONGODB_URI) {
+    console.error("❌ MONGODB_URI is not set. Complaint APIs will return 503 until MongoDB is configured.");
+    return;
+  }
+
+  if (isConnecting || mongoose.connection.readyState === 1) {
+    return;
+  }
+
+  isConnecting = true;
+  try {
+    await mongoose.connect(MONGODB_URI, {
       serverSelectionTimeoutMS: 10000,
-    })
-    .then(() => {
-      console.log("✅ Connected to MongoDB Atlas");
-    })
-    .catch((err) => {
-      console.error("❌ MongoDB connection error:", err.message);
-      console.warn("⚠️ Complaint APIs will return 503 until MongoDB reconnects.");
+      socketTimeoutMS: 45000,
+      heartbeatFrequencyMS: 10000,
+      maxPoolSize: 20,
     });
-}
+    reconnectAttempts = 0;
+    console.log("✅ Connected to MongoDB Atlas");
+  } catch (err) {
+    console.error("❌ MongoDB connection error:", err.message);
+    scheduleReconnect();
+  } finally {
+    isConnecting = false;
+  }
+};
+
+mongoose.connection.on("disconnected", () => {
+  scheduleReconnect();
+});
+
+mongoose.connection.on("error", (err) => {
+  console.error("❌ MongoDB runtime error:", err.message);
+});
+
+mongoose.connection.on("connected", () => {
+  reconnectAttempts = 0;
+  if (reconnectTimer) {
+    clearTimeout(reconnectTimer);
+    reconnectTimer = null;
+  }
+});
+
+connectMongo();
 
 // Routes
 app.use("/api", complaintRoutes);
@@ -50,5 +105,15 @@ app.get("/health", (req, res) => {
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
+});
+
+process.on("SIGINT", async () => {
+  if (reconnectTimer) {
+    clearTimeout(reconnectTimer);
+    reconnectTimer = null;
+  }
+
+  await mongoose.connection.close();
+  process.exit(0);
 });
 
