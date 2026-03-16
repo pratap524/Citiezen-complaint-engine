@@ -9,22 +9,8 @@ export default function usePageStyle(href) {
     document.documentElement.removeAttribute('data-route-style-ready');
 
     const styleId = `page-style-${href.replace(/[^a-z0-9]/gi, '-')}`;
-    const activeStyleId = document.documentElement.getAttribute('data-active-page-style-id');
     let linkElement = document.getElementById(styleId);
-
-    const activateStyle = () => {
-      linkElement.disabled = false;
-      document.documentElement.setAttribute('data-active-page-style-id', styleId);
-
-      if (activeStyleId && activeStyleId !== styleId) {
-        const previousStyle = document.getElementById(activeStyleId);
-        if (previousStyle) {
-          previousStyle.disabled = true;
-        }
-      }
-
-      document.documentElement.setAttribute('data-route-style-ready', 'true');
-    };
+    let created = false;
 
     if (!linkElement) {
       const preloadedStyle = document.querySelector(`link[rel="preload"][as="style"][href="${href}"]`);
@@ -39,13 +25,18 @@ export default function usePageStyle(href) {
       }
 
       linkElement.id = styleId;
-      linkElement.disabled = true;
-      linkElement.onload = activateStyle;
       document.head.appendChild(linkElement);
-    } else if (linkElement.sheet) {
-      activateStyle();
+      created = true;
+    }
+
+    const onReady = () => {
+      document.documentElement.setAttribute('data-route-style-ready', 'true');
+    };
+
+    if (linkElement.sheet) {
+      onReady();
     } else {
-      linkElement.onload = activateStyle;
+      linkElement.addEventListener('load', onReady, { once: true });
     }
 
     const revealTimeout = window.setTimeout(() => {
@@ -54,6 +45,10 @@ export default function usePageStyle(href) {
 
     return () => {
       window.clearTimeout(revealTimeout);
+      linkElement.removeEventListener('load', onReady);
+      if (created && linkElement.parentNode) {
+        linkElement.parentNode.removeChild(linkElement);
+      }
     };
   }, [href]);
 }
