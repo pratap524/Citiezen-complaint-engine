@@ -20,7 +20,7 @@ app.use(
 // MongoDB connection
 const MONGODB_URI = process.env.MONGODB_URI;
 if (!MONGODB_URI) {
-  console.warn("⚠️ MONGODB_URI is not set. Running in in-memory fallback mode.");
+  console.error("❌ MONGODB_URI is not set. Complaint APIs will return 503 until MongoDB is configured.");
 } else {
   mongoose
     .connect(MONGODB_URI, {
@@ -31,7 +31,7 @@ if (!MONGODB_URI) {
     })
     .catch((err) => {
       console.error("❌ MongoDB connection error:", err.message);
-      console.warn("⚠️ Continuing with in-memory fallback mode.");
+      console.warn("⚠️ Complaint APIs will return 503 until MongoDB reconnects.");
     });
 }
 
@@ -41,7 +41,10 @@ app.use("/api", authRoutes);
 
 // Health check
 app.get("/health", (req, res) => {
-  res.json({ status: "ok" });
+  res.json({
+    status: "ok",
+    db: mongoose.connection.readyState === 1 ? "connected" : "disconnected",
+  });
 });
 
 const PORT = process.env.PORT || 5000;

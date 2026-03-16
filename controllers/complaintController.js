@@ -1,11 +1,14 @@
 import Complaint from "../models/Complaint.js";
-import { randomUUID } from "node:crypto";
 
 const EARTH_RADIUS_METERS = 6378137;
 const AI_CLASSIFIER_URL = process.env.AI_CLASSIFIER_URL || "http://127.0.0.1:5001/api/classify";
-const inMemoryComplaints = [];
 
 const isDbConnected = () => Complaint.db?.readyState === 1;
+const getDbUnavailableResponse = (res) => {
+  return res.status(503).json({
+    message: "Database unavailable. Please try again once MongoDB reconnects.",
+  });
+};
 
 const normalizeStoredComplaint = (item) => {
   const sourceScore = typeof item.urgencyScore === "number"
@@ -18,18 +21,6 @@ const normalizeStoredComplaint = (item) => {
     urgencyScore: syncedScore,
     priorityScore: syncedScore,
   };
-};
-
-const getDistanceMeters = (lat1, lon1, lat2, lon2) => {
-  const toRad = (degree) => (degree * Math.PI) / 180;
-  const dLat = toRad(lat2 - lat1);
-  const dLon = toRad(lon2 - lon1);
-
-  const a = Math.sin(dLat / 2) ** 2
-    + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-  return EARTH_RADIUS_METERS * c;
 };
 
 const RESOLUTION_DAYS = {
@@ -98,17 +89,21 @@ const normalizePriorityScore = (value) => {
 };
 
 const applyCategorySurgeBoost = async ({ department, createdAt, baseScore }) => {
+  if (!isDbConnected()) {
+    return {
+      score: normalizePriorityScore(baseScore),
+      count: 0,
+      surgeLabel: "normal",
+    };
+  }
+
   const thirtyDaysAgo = new Date(createdAt);
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-  const sameCategoryCount = isDbConnected()
-    ? await Complaint.countDocuments({
-      department,
-      createdAt: { $gte: thirtyDaysAgo },
-    })
-    : inMemoryComplaints.filter((item) => (
-      item.department === department && new Date(item.createdAt) >= thirtyDaysAgo
-    )).length;
+  const sameCategoryCount = await Complaint.countDocuments({
+    department,
+    createdAt: { $gte: thirtyDaysAgo },
+  });
 
   let boostedScore = normalizePriorityScore(baseScore);
   let surgeLabel = "normal";
@@ -269,6 +264,10 @@ export const createComplaint = async (req, res) => {
   }
 
   try {
+    if (!isDbConnected()) {
+      return getDbUnavailableResponse(res);
+    }
+
     // First, classify based on text
     const classification = classifyComplaint(text);
     let { department, urgencyScore, sentiment, predictedResolutionDays, keyTags } = classification;
@@ -316,31 +315,6 @@ export const createComplaint = async (req, res) => {
       if (!keyTags.includes(surgeTag)) {
         keyTags = [surgeTag, ...keyTags].slice(0, 5);
       }
-    }
-
-    if (!isDbConnected()) {
-      const now = new Date();
-      const saved = {
-        _id: randomUUID(),
-        originalText: text,
-        category: normalizedCategory,
-        department,
-        priorityScore,
-        urgencyScore,
-        sentiment,
-        predictedResolutionDays,
-        keyTags,
-        status: "Pending",
-        location: {
-          type: "Point",
-          coordinates: [longitude, latitude],
-        },
-        createdAt: now,
-        updatedAt: now,
-      };
-
-      inMemoryComplaints.push(saved);
-      return res.status(201).json(saved);
     }
 
     const complaint = new Complaint({
@@ -401,11 +375,7 @@ export const suggestComplaintCategory = async (req, res) => {
 export const getComplaints = async (req, res) => {
   try {
     if (!isDbConnected()) {
-      const normalized = [...inMemoryComplaints]
-        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-        .map(normalizeStoredComplaint);
-
-      return res.json(normalized);
+      return getDbUnavailableResponse(res);
     }
 
     const complaints = await Complaint.find({}, {
@@ -450,19 +420,7 @@ export const getComplaints = async (req, res) => {
 export const getTopIssues = async (req, res) => {
   try {
     if (!isDbConnected()) {
-      const countMap = new Map();
-      inMemoryComplaints.forEach((item) => {
-        (item.keyTags || []).forEach((tag) => {
-          countMap.set(tag, (countMap.get(tag) || 0) + 1);
-        });
-      });
-
-      const tags = [...countMap.entries()]
-        .map(([key, count]) => ({ _id: key, count }))
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 10);
-
-      return res.json(tags);
+      return getDbUnavailableResponse(res);
     }
 
     const tags = await Complaint.aggregate([
@@ -488,30 +446,7 @@ export const getTopIssues = async (req, res) => {
 export const getComplaintsByDepartment = async (req, res) => {
   try {
     if (!isDbConnected()) {
-      const sorted = [...inMemoryComplaints]
-        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-        .map(normalizeStoredComplaint);
-
-      const groupedMap = new Map();
-      sorted.forEach((item) => {
-        const department = item.department || "Other";
-        if (!groupedMap.has(department)) {
-          groupedMap.set(department, []);
-        }
-        groupedMap.get(department).push(item);
-      });
-
-      const departments = [...groupedMap.entries()].map(([department, complaints]) => ({
-        department,
-        count: complaints.length,
-        complaints,
-      }));
-
-      return res.json({
-        totalDepartments: departments.length,
-        totalComplaints: sorted.length,
-        departments,
-      });
+      return getDbUnavailableResponse(res);
     }
 
     const complaints = await Complaint.find({}, {
@@ -565,13 +500,7 @@ export const getComplaintsByDepartment = async (req, res) => {
 export const getUrgencyRanking = async (req, res) => {
   try {
     if (!isDbConnected()) {
-      const normalized = inMemoryComplaints
-        .filter((item) => item.status === "Pending")
-        .sort((a, b) => (b.urgencyScore || b.priorityScore || 0) - (a.urgencyScore || a.priorityScore || 0))
-        .slice(0, 20)
-        .map(normalizeStoredComplaint);
-
-      return res.json(normalized);
+      return getDbUnavailableResponse(res);
     }
 
     const urgentComplaints = await Complaint.find({ status: "Pending" }, {
@@ -612,29 +541,7 @@ export const getUrgencyRanking = async (req, res) => {
 export const getDashboardStats = async (req, res) => {
   try {
     if (!isDbConnected()) {
-      const countByDepartment = {};
-      const sentimentDistribution = {};
-      let predictedResolutionTotal = 0;
-
-      inMemoryComplaints.forEach((item) => {
-        const dept = item.department || "Unknown";
-        const sentiment = item.sentiment || "Unknown";
-        countByDepartment[dept] = (countByDepartment[dept] || 0) + 1;
-        sentimentDistribution[sentiment] = (sentimentDistribution[sentiment] || 0) + 1;
-        predictedResolutionTotal += Number(item.predictedResolutionDays || 0);
-      });
-
-      const totalComplaints = inMemoryComplaints.length;
-      const avgPredictedResolutionDays = totalComplaints > 0
-        ? predictedResolutionTotal / totalComplaints
-        : 0;
-
-      return res.json({
-        totalComplaints,
-        countByDepartment,
-        avgPredictedResolutionDays,
-        sentimentDistribution,
-      });
+      return getDbUnavailableResponse(res);
     }
 
     const [totals, avgResolution, sentiments] = await Promise.all([
@@ -718,35 +625,7 @@ export const getClusters = async (req, res) => {
 
   try {
     if (!isDbConnected()) {
-      const count = inMemoryComplaints.filter((item) => {
-        if (item.status !== "Pending") {
-          return false;
-        }
-
-        const coordinates = item.location?.coordinates;
-        if (!Array.isArray(coordinates) || coordinates.length !== 2) {
-          return false;
-        }
-
-        const [itemLng, itemLat] = coordinates;
-        return getDistanceMeters(latitude, longitude, itemLat, itemLng) <= radiusMeters;
-      }).length;
-
-      let alertLevel = "None";
-      if (count > 50) {
-        alertLevel = "Severe";
-      } else if (count > 10) {
-        alertLevel = "High";
-      } else if (count > 0) {
-        alertLevel = "Low";
-      }
-
-      const isCluster = count > 10;
-      return res.json({
-        isCluster,
-        count,
-        alertLevel,
-      });
+      return getDbUnavailableResponse(res);
     }
 
     const count = await Complaint.countDocuments({
@@ -803,20 +682,7 @@ export const updateComplaintStatus = async (req, res) => {
 
   try {
     if (!isDbConnected()) {
-      const targetIndex = inMemoryComplaints.findIndex((item) => String(item._id) === String(id));
-      if (targetIndex === -1) {
-        return res.status(404).json({
-          message: "Complaint not found.",
-        });
-      }
-
-      inMemoryComplaints[targetIndex] = {
-        ...inMemoryComplaints[targetIndex],
-        status,
-        updatedAt: new Date(),
-      };
-
-      return res.json(inMemoryComplaints[targetIndex]);
+      return getDbUnavailableResponse(res);
     }
 
     const updated = await Complaint.findByIdAndUpdate(id, { status }, { new: true });
