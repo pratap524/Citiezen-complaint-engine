@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useLayoutEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 
 const TRANSITION_MS = 520;
@@ -8,7 +8,7 @@ export default function RouteTransitionLoader() {
   const previousPathRef = useRef(location.pathname);
   const [isVisible, setIsVisible] = useState(false);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (previousPathRef.current === location.pathname) {
       return undefined;
     }
