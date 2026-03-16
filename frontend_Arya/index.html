@@ -16,6 +16,11 @@
     <link href="/settings.css" rel="preload" as="style" />
     <link href="/submit.css" rel="preload" as="style" />
     <link href="/track.css" rel="preload" as="style" />
+    <style>
+      html:not([data-route-style-ready="true"]) body {
+        visibility: hidden;
+      }
+    </style>
     <script>
       (function () {
         var path = window.location.pathname.toLowerCase();
@@ -38,7 +43,14 @@
         link.id = styleId;
         link.rel = 'stylesheet';
         link.href = href;
+        link.onload = function () {
+          document.documentElement.setAttribute('data-route-style-ready', 'true');
+        };
         document.head.appendChild(link);
+
+        window.setTimeout(function () {
+          document.documentElement.setAttribute('data-route-style-ready', 'true');
+        }, 2500);
       })();
     </script>
   </head>

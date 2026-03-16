@@ -6,6 +6,8 @@ export default function usePageStyle(href) {
       return undefined;
     }
 
+    document.documentElement.removeAttribute('data-route-style-ready');
+
     const styleId = `page-style-${href.replace(/[^a-z0-9]/gi, '-')}`;
     let linkElement = document.getElementById(styleId);
 
@@ -22,10 +24,20 @@ export default function usePageStyle(href) {
       }
 
       linkElement.id = styleId;
+      linkElement.onload = () => {
+        document.documentElement.setAttribute('data-route-style-ready', 'true');
+      };
       document.head.appendChild(linkElement);
+    } else {
+      document.documentElement.setAttribute('data-route-style-ready', 'true');
     }
 
+    const revealTimeout = window.setTimeout(() => {
+      document.documentElement.setAttribute('data-route-style-ready', 'true');
+    }, 2500);
+
     return () => {
+      window.clearTimeout(revealTimeout);
       const current = document.getElementById(styleId);
       if (current) {
         current.remove();
