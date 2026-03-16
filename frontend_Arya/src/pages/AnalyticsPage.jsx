@@ -78,6 +78,7 @@ export default function AnalyticsPage() {
   const { isAuthenticated, isGovernment, session } = getAdminSessionInfo();
   const { adminName, adminAvatar } = useMemo(() => getAdminIdentity(session), [session]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isComplaintsLoading, setIsComplaintsLoading] = useState(true);
   const [dashboardStats, setDashboardStats] = useState(null);
   const [topIssues, setTopIssues] = useState([]);
   const [urgencyRanking, setUrgencyRanking] = useState([]);
@@ -89,8 +90,8 @@ export default function AnalyticsPage() {
   useEffect(() => {
     let ignore = false;
 
-    Promise.all([getDashboardStats(), getTopIssues(), getUrgencyRanking(), getComplaints()])
-      .then(([statsResponse, topIssuesResponse, urgencyResponse, complaintsResponse]) => {
+    Promise.all([getDashboardStats(), getTopIssues(), getUrgencyRanking()])
+      .then(([statsResponse, topIssuesResponse, urgencyResponse]) => {
         if (ignore) {
           return;
         }
@@ -98,7 +99,6 @@ export default function AnalyticsPage() {
         setDashboardStats(statsResponse || null);
         setTopIssues(Array.isArray(topIssuesResponse) ? topIssuesResponse : []);
         setUrgencyRanking(Array.isArray(urgencyResponse) ? urgencyResponse : []);
-        setComplaints(Array.isArray(complaintsResponse) ? complaintsResponse : []);
       })
       .catch(() => {
         if (ignore) {
@@ -113,6 +113,27 @@ export default function AnalyticsPage() {
       .finally(() => {
         if (!ignore) {
           setIsLoading(false);
+        }
+      });
+
+    getComplaints()
+      .then((complaintsResponse) => {
+        if (ignore) {
+          return;
+        }
+
+        setComplaints(Array.isArray(complaintsResponse) ? complaintsResponse : []);
+      })
+      .catch(() => {
+        if (ignore) {
+          return;
+        }
+
+        setComplaints([]);
+      })
+      .finally(() => {
+        if (!ignore) {
+          setIsComplaintsLoading(false);
         }
       });
 
@@ -338,60 +359,66 @@ export default function AnalyticsPage() {
 
             <article className="panel">
               <h3>Priority Distribution</h3>
-              <div className="donut-wrap">
-                <div className="donut-chart" onMouseLeave={() => setActivePrioritySegment(null)}>
-                  <svg viewBox="0 0 150 150" role="img" aria-label="Priority distribution chart">
-                    <circle cx="75" cy="75" r={donutRadius} className="donut-track" />
-                    {issueTotalCount > 0 && donutSegments.map((segment) => (
-                      segment.count > 0 ? (
-                        <circle
-                          key={segment.label}
-                          cx="75"
-                          cy="75"
-                          r={donutRadius}
-                          className={`donut-segment ${activePrioritySegment === segment.label ? 'active' : ''}`}
-                          style={{
-                            stroke: segment.color,
-                            strokeDasharray: segment.dash,
-                            strokeDashoffset: -segment.offset
-                          }}
-                          transform="rotate(-90 75 75)"
-                          onMouseEnter={() => setActivePrioritySegment(segment.label)}
-                        />
-                      ) : null
-                    ))}
-                  </svg>
-                  <div className="donut-center">
-                    <strong>{activePriorityData.count}</strong>
-                    <span>{activePriorityData.label}</span>
-                  </div>
+              {isComplaintsLoading ? (
+                <div className="priority-loading" role="status" aria-live="polite">
+                  Loading priority distribution...
                 </div>
-                {hoveredPriorityData && (
-                  <div className="priority-tooltip" role="status" aria-live="polite">
-                    <strong>{hoveredPriorityData.label} priority</strong>
-                    <span>{hoveredPriorityData.count} complaints</span>
-                    <span>{hoveredPriorityData.percentage}% of total complaints</span>
+              ) : (
+                <div className="donut-wrap">
+                  <div className="donut-chart" onMouseLeave={() => setActivePrioritySegment(null)}>
+                    <svg viewBox="0 0 150 150" role="img" aria-label="Priority distribution chart">
+                      <circle cx="75" cy="75" r={donutRadius} className="donut-track" />
+                      {issueTotalCount > 0 && donutSegments.map((segment) => (
+                        segment.count > 0 ? (
+                          <circle
+                            key={segment.label}
+                            cx="75"
+                            cy="75"
+                            r={donutRadius}
+                            className={`donut-segment ${activePrioritySegment === segment.label ? 'active' : ''}`}
+                            style={{
+                              stroke: segment.color,
+                              strokeDasharray: segment.dash,
+                              strokeDashoffset: -segment.offset
+                            }}
+                            transform="rotate(-90 75 75)"
+                            onMouseEnter={() => setActivePrioritySegment(segment.label)}
+                          />
+                        ) : null
+                      ))}
+                    </svg>
+                    <div className="donut-center">
+                      <strong>{activePriorityData.count}</strong>
+                      <span>{activePriorityData.label}</span>
+                    </div>
                   </div>
-                )}
-                <ul className="legend-list">
-                  {issueLegends.length > 0 ? issueLegends.map((item, index) => (
-                    <li key={item.label}>
-                      <button
-                        type="button"
-                        className={`legend-chip ${activePriority === item.label ? 'active' : ''}`}
-                        onClick={() => setActivePriority((current) => (current === item.label ? 'all' : item.label))}
-                        onMouseEnter={() => setActivePrioritySegment(item.label)}
-                        onMouseLeave={() => setActivePrioritySegment((current) => (current === item.label ? null : current))}
-                      >
-                        <span className={`swatch ${item.swatch}`}></span>
-                        {item.label}: {item.count} ({item.percentage}%)
-                      </button>
-                    </li>
-                  )) : (
-                    <li><span className="swatch low"></span>No complaint data yet</li>
+                  {hoveredPriorityData && (
+                    <div className="priority-tooltip" role="status" aria-live="polite">
+                      <strong>{hoveredPriorityData.label} priority</strong>
+                      <span>{hoveredPriorityData.count} complaints</span>
+                      <span>{hoveredPriorityData.percentage}% of total complaints</span>
+                    </div>
                   )}
-                </ul>
-              </div>
+                  <ul className="legend-list">
+                    {issueLegends.length > 0 ? issueLegends.map((item) => (
+                      <li key={item.label}>
+                        <button
+                          type="button"
+                          className={`legend-chip ${activePriority === item.label ? 'active' : ''}`}
+                          onClick={() => setActivePriority((current) => (current === item.label ? 'all' : item.label))}
+                          onMouseEnter={() => setActivePrioritySegment(item.label)}
+                          onMouseLeave={() => setActivePrioritySegment((current) => (current === item.label ? null : current))}
+                        >
+                          <span className={`swatch ${item.swatch}`}></span>
+                          {item.label}: {item.count} ({item.percentage}%)
+                        </button>
+                      </li>
+                    )) : (
+                      <li><span className="swatch low"></span>No complaint data yet</li>
+                    )}
+                  </ul>
+                </div>
+              )}
             </article>
           </section>
 
