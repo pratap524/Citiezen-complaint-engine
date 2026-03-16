@@ -87,8 +87,34 @@ export default function AnalyticsPage() {
   const [activeMonthIndex, setActiveMonthIndex] = useState(null);
   const [activePrioritySegment, setActivePrioritySegment] = useState(null);
 
+  const readCachedComplaints = () => {
+    try {
+      const cachedValue = sessionStorage.getItem('analytics_complaints_cache');
+      if (!cachedValue) {
+        return [];
+      }
+
+      const parsed = JSON.parse(cachedValue);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  };
+
+  const writeCachedComplaints = (items) => {
+    try {
+      sessionStorage.setItem('analytics_complaints_cache', JSON.stringify(items));
+    } catch {}
+  };
+
   useEffect(() => {
     let ignore = false;
+    const cachedComplaints = readCachedComplaints();
+
+    if (cachedComplaints.length > 0) {
+      setComplaints(cachedComplaints);
+      setIsComplaintsLoading(false);
+    }
 
     Promise.all([getDashboardStats(), getTopIssues(), getUrgencyRanking()])
       .then(([statsResponse, topIssuesResponse, urgencyResponse]) => {
@@ -122,7 +148,9 @@ export default function AnalyticsPage() {
           return;
         }
 
-        setComplaints(Array.isArray(complaintsResponse) ? complaintsResponse : []);
+        const normalizedComplaints = Array.isArray(complaintsResponse) ? complaintsResponse : [];
+        setComplaints(normalizedComplaints);
+        writeCachedComplaints(normalizedComplaints);
       })
       .catch(() => {
         if (ignore) {
