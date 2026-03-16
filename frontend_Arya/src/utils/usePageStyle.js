@@ -1,7 +1,7 @@
-import { useEffect } from 'react';
+import { useLayoutEffect } from 'react';
 
 export default function usePageStyle(href) {
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!href) {
       return undefined;
     }

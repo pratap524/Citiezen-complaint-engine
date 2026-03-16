@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Sora:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link href="/styles.css" rel="stylesheet" />
+    <link href="/styles.css" rel="preload" as="style" />
     <link href="/login.css" rel="preload" as="style" />
     <link href="/signup.css" rel="preload" as="style" />
     <link href="/analytics.css" rel="preload" as="style" />
@@ -16,6 +16,31 @@
     <link href="/settings.css" rel="preload" as="style" />
     <link href="/submit.css" rel="preload" as="style" />
     <link href="/track.css" rel="preload" as="style" />
+    <script>
+      (function () {
+        var path = window.location.pathname.toLowerCase();
+        var href = '/styles.css';
+
+        if (path.startsWith('/login')) href = '/login.css';
+        else if (path.startsWith('/signup')) href = '/signup.css';
+        else if (path.startsWith('/submit')) href = '/submit.css';
+        else if (path.startsWith('/track')) href = '/track.css';
+        else if (path.startsWith('/analytics')) href = '/analytics.css';
+        else if (path.startsWith('/complaints')) href = '/complaints.css';
+        else if (path.startsWith('/insights')) href = '/insights.css';
+        else if (path.startsWith('/settings')) href = '/settings.css';
+
+        var styleId = 'page-style-' + href.replace(/[^a-z0-9]/gi, '-');
+        if (document.getElementById(styleId)) return;
+
+        var preloaded = document.querySelector('link[rel="preload"][as="style"][href="' + href + '"]');
+        var link = preloaded ? preloaded.cloneNode() : document.createElement('link');
+        link.id = styleId;
+        link.rel = 'stylesheet';
+        link.href = href;
+        document.head.appendChild(link);
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
