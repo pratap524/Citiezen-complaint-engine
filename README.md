@@ -47,7 +47,12 @@ A Node.js/Express backend for the Citizen Complaint Intelligence Engine hackatho
 3. **Environment Variables**
    Create a `.env` file:
    ```
+   # Preferred (works on most networks)
    MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/citizen_complaints
+
+   # If SRV DNS lookup fails (querySrv ECONNREFUSED), use non-SRV format:
+   # MONGODB_URI=mongodb://username:password@host1:27017,host2:27017,host3:27017/?authSource=admin&replicaSet=<replicaSetName>&tls=true&retryWrites=true&w=majority
+
    PORT=5000
    CLIENT_URL=http://localhost:3000  # For CORS
    ```
@@ -98,9 +103,22 @@ curl http://localhost:5000/api/dashboard-stats
 
 ## Deployment
 
-- Deploy to services like Heroku, Vercel, or AWS
-- Use MongoDB Atlas for database
-- Ensure environment variables are set
+### Vercel (Recommended as 2 projects)
+
+1. **Backend project** (root folder)
+   - Import repo in Vercel and set root to repository root.
+   - Set environment variables:
+     - `MONGODB_URI`
+     - `CLIENT_URL` (frontend Vercel URL)
+     - `PORT=5000` (optional on Vercel)
+
+2. **Frontend project** (`frontend_Arya` folder)
+   - Create second Vercel project from same repo with root `frontend_Arya`.
+   - Set `VITE_API_BASE_URL=https://<your-backend-domain>/api`.
+
+3. **If MongoDB SRV fails in your network**
+   - Error looks like: `querySrv ECONNREFUSED _mongodb._tcp.<cluster>.mongodb.net`.
+   - Use a non-SRV Atlas URI (`mongodb://host1,host2,host3/...`) instead of `mongodb+srv://`.
 
 ## License
 
