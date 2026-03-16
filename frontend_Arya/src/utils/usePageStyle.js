@@ -6,6 +6,11 @@ export default function usePageStyle(href) {
       return undefined;
     }
 
+    const existingGlobalStyle = document.querySelector(`link[rel="stylesheet"][href="${href}"]`);
+    if (existingGlobalStyle) {
+      return undefined;
+    }
+
     const styleId = `page-style-${href.replace(/[^a-z0-9]/gi, '-')}`;
     let linkElement = document.getElementById(styleId);
 
