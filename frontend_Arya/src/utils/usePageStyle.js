@@ -6,19 +6,22 @@ export default function usePageStyle(href) {
       return undefined;
     }
 
-    const existingGlobalStyle = document.querySelector(`link[rel="stylesheet"][href="${href}"]`);
-    if (existingGlobalStyle) {
-      return undefined;
-    }
-
     const styleId = `page-style-${href.replace(/[^a-z0-9]/gi, '-')}`;
     let linkElement = document.getElementById(styleId);
 
     if (!linkElement) {
-      linkElement = document.createElement('link');
+      const preloadedStyle = document.querySelector(`link[rel="preload"][as="style"][href="${href}"]`);
+
+      if (preloadedStyle) {
+        linkElement = preloadedStyle.cloneNode();
+        linkElement.rel = 'stylesheet';
+      } else {
+        linkElement = document.createElement('link');
+        linkElement.rel = 'stylesheet';
+        linkElement.href = href;
+      }
+
       linkElement.id = styleId;
-      linkElement.rel = 'stylesheet';
-      linkElement.href = href;
       document.head.appendChild(linkElement);
     }
 
