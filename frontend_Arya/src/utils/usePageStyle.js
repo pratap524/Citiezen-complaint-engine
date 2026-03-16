@@ -9,7 +9,22 @@ export default function usePageStyle(href) {
     document.documentElement.removeAttribute('data-route-style-ready');
 
     const styleId = `page-style-${href.replace(/[^a-z0-9]/gi, '-')}`;
+    const activeStyleId = document.documentElement.getAttribute('data-active-page-style-id');
     let linkElement = document.getElementById(styleId);
+
+    const activateStyle = () => {
+      linkElement.disabled = false;
+      document.documentElement.setAttribute('data-active-page-style-id', styleId);
+
+      if (activeStyleId && activeStyleId !== styleId) {
+        const previousStyle = document.getElementById(activeStyleId);
+        if (previousStyle) {
+          previousStyle.disabled = true;
+        }
+      }
+
+      document.documentElement.setAttribute('data-route-style-ready', 'true');
+    };
 
     if (!linkElement) {
       const preloadedStyle = document.querySelector(`link[rel="preload"][as="style"][href="${href}"]`);
@@ -24,12 +39,13 @@ export default function usePageStyle(href) {
       }
 
       linkElement.id = styleId;
-      linkElement.onload = () => {
-        document.documentElement.setAttribute('data-route-style-ready', 'true');
-      };
+      linkElement.disabled = true;
+      linkElement.onload = activateStyle;
       document.head.appendChild(linkElement);
+    } else if (linkElement.sheet) {
+      activateStyle();
     } else {
-      document.documentElement.setAttribute('data-route-style-ready', 'true');
+      linkElement.onload = activateStyle;
     }
 
     const revealTimeout = window.setTimeout(() => {
@@ -38,10 +54,6 @@ export default function usePageStyle(href) {
 
     return () => {
       window.clearTimeout(revealTimeout);
-      const current = document.getElementById(styleId);
-      if (current) {
-        current.remove();
-      }
     };
   }, [href]);
 }
