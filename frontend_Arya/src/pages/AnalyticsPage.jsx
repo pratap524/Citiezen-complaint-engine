@@ -19,6 +19,43 @@ const PRIORITY_SEGMENTS = [
   { key: 'Low', color: '#2ecc71', swatch: 'low' }
 ];
 
+const ANALYTICS_CACHE_KEY = 'analytics_complaints_cache_v1';
+const ANALYTICS_CACHE_TTL_MS = 30 * 60 * 1000;
+
+const readCachedComplaints = () => {
+  try {
+    const rawValue = localStorage.getItem(ANALYTICS_CACHE_KEY);
+    if (!rawValue) {
+      return [];
+    }
+
+    const parsed = JSON.parse(rawValue);
+    const timestamp = Number(parsed?.timestamp || 0);
+    const items = Array.isArray(parsed?.items) ? parsed.items : [];
+
+    if (!items.length) {
+      return [];
+    }
+
+    if (!timestamp || Date.now() - timestamp > ANALYTICS_CACHE_TTL_MS) {
+      return [];
+    }
+
+    return items;
+  } catch {
+    return [];
+  }
+};
+
+const writeCachedComplaints = (items) => {
+  try {
+    localStorage.setItem(ANALYTICS_CACHE_KEY, JSON.stringify({
+      timestamp: Date.now(),
+      items
+    }));
+  } catch {}
+};
+
 const buildMonthLabels = () => {
   const labels = [];
   const current = new Date();
@@ -77,44 +114,19 @@ export default function AnalyticsPage() {
 
   const { isAuthenticated, isGovernment, session } = getAdminSessionInfo();
   const { adminName, adminAvatar } = useMemo(() => getAdminIdentity(session), [session]);
+  const initialComplaints = useMemo(() => readCachedComplaints(), []);
   const [isLoading, setIsLoading] = useState(true);
-  const [isComplaintsLoading, setIsComplaintsLoading] = useState(true);
+  const [isComplaintsLoading, setIsComplaintsLoading] = useState(initialComplaints.length === 0);
   const [dashboardStats, setDashboardStats] = useState(null);
   const [topIssues, setTopIssues] = useState([]);
   const [urgencyRanking, setUrgencyRanking] = useState([]);
-  const [complaints, setComplaints] = useState([]);
+  const [complaints, setComplaints] = useState(initialComplaints);
   const [activePriority, setActivePriority] = useState('all');
   const [activeMonthIndex, setActiveMonthIndex] = useState(null);
   const [activePrioritySegment, setActivePrioritySegment] = useState(null);
 
-  const readCachedComplaints = () => {
-    try {
-      const cachedValue = sessionStorage.getItem('analytics_complaints_cache');
-      if (!cachedValue) {
-        return [];
-      }
-
-      const parsed = JSON.parse(cachedValue);
-      return Array.isArray(parsed) ? parsed : [];
-    } catch {
-      return [];
-    }
-  };
-
-  const writeCachedComplaints = (items) => {
-    try {
-      sessionStorage.setItem('analytics_complaints_cache', JSON.stringify(items));
-    } catch {}
-  };
-
   useEffect(() => {
     let ignore = false;
-    const cachedComplaints = readCachedComplaints();
-
-    if (cachedComplaints.length > 0) {
-      setComplaints(cachedComplaints);
-      setIsComplaintsLoading(false);
-    }
 
     Promise.all([getDashboardStats(), getTopIssues(), getUrgencyRanking()])
       .then(([statsResponse, topIssuesResponse, urgencyResponse]) => {
@@ -321,68 +333,76 @@ export default function AnalyticsPage() {
           <section className="panel-grid">
             <article className="panel">
               <h3>Monthly Complaints Trend</h3>
-              <div className="line-chart">
-                <svg
-                  viewBox="0 0 500 240"
-                  role="img"
-                  aria-label="Monthly complaints trend"
-                  onMouseLeave={() => setActiveMonthIndex(null)}
-                >
-                  <line x1="40" y1="20" x2="40" y2="200" className="axis" />
-                  <line x1="40" y1="200" x2="470" y2="200" className="axis" />
-                  <line x1="40" y1="160" x2="470" y2="160" className="grid" />
-                  <line x1="40" y1="120" x2="470" y2="120" className="grid" />
-                  <line x1="40" y1="80" x2="470" y2="80" className="grid" />
-                  <line x1="40" y1="40" x2="470" y2="40" className="grid" />
-                  {totalCoordinates.map((point, index) => {
-                    const prevX = index > 0 ? totalCoordinates[index - 1].x : point.x;
-                    const nextX = index < totalCoordinates.length - 1 ? totalCoordinates[index + 1].x : point.x;
-                    const startX = index === 0 ? 40 : (prevX + point.x) / 2;
-                    const endX = index === totalCoordinates.length - 1 ? 470 : (point.x + nextX) / 2;
+              {isComplaintsLoading ? (
+                <div className="trend-loading" role="status" aria-live="polite">
+                  Loading complaints trend...
+                </div>
+              ) : (
+                <>
+                  <div className="line-chart">
+                    <svg
+                      viewBox="0 0 500 240"
+                      role="img"
+                      aria-label="Monthly complaints trend"
+                      onMouseLeave={() => setActiveMonthIndex(null)}
+                    >
+                      <line x1="40" y1="20" x2="40" y2="200" className="axis" />
+                      <line x1="40" y1="200" x2="470" y2="200" className="axis" />
+                      <line x1="40" y1="160" x2="470" y2="160" className="grid" />
+                      <line x1="40" y1="120" x2="470" y2="120" className="grid" />
+                      <line x1="40" y1="80" x2="470" y2="80" className="grid" />
+                      <line x1="40" y1="40" x2="470" y2="40" className="grid" />
+                      {totalCoordinates.map((point, index) => {
+                        const prevX = index > 0 ? totalCoordinates[index - 1].x : point.x;
+                        const nextX = index < totalCoordinates.length - 1 ? totalCoordinates[index + 1].x : point.x;
+                        const startX = index === 0 ? 40 : (prevX + point.x) / 2;
+                        const endX = index === totalCoordinates.length - 1 ? 470 : (point.x + nextX) / 2;
 
-                    return (
-                      <rect
-                        key={`month-zone-${monthLabels[index]}`}
-                        x={startX}
-                        y="20"
-                        width={Math.max(1, endX - startX)}
-                        height="180"
-                        className={`hover-band ${activeMonthIndex === index ? 'active' : ''}`}
-                        onMouseEnter={() => setActiveMonthIndex(index)}
-                      />
-                    );
-                  })}
-                  <polyline points={lineTotalPoints} className="line-total" />
-                  <polyline points={lineResolvedPoints} className="line-resolved" />
-                  {totalCoordinates.map((point, index) => (
-                    <circle
-                      key={`total-point-${monthLabels[index]}`}
-                      cx={point.x}
-                      cy={point.y}
-                      r={activeMonthIndex === index ? 4.5 : 3.4}
-                      className="line-point total"
-                    />
-                  ))}
-                  {resolvedCoordinates.map((point, index) => (
-                    <circle
-                      key={`resolved-point-${monthLabels[index]}`}
-                      cx={point.x}
-                      cy={point.y}
-                      r={activeMonthIndex === index ? 4.3 : 3.2}
-                      className="line-point resolved"
-                    />
-                  ))}
-                </svg>
-                <div className="month-labels">{monthLabels.map((label) => <span key={label}>{label}</span>)}</div>
-                {activeMonthIndex !== null && (
-                  <div className="chart-tooltip" role="status" aria-live="polite">
-                    <strong>{monthLabels[activeMonthIndex]}</strong>
-                    <span>Total complaints: {monthBucket[activeMonthIndex]?.total || 0}</span>
-                    <span>Resolved complaints: {monthBucket[activeMonthIndex]?.resolved || 0}</span>
+                        return (
+                          <rect
+                            key={`month-zone-${monthLabels[index]}`}
+                            x={startX}
+                            y="20"
+                            width={Math.max(1, endX - startX)}
+                            height="180"
+                            className={`hover-band ${activeMonthIndex === index ? 'active' : ''}`}
+                            onMouseEnter={() => setActiveMonthIndex(index)}
+                          />
+                        );
+                      })}
+                      <polyline points={lineTotalPoints} className="line-total" />
+                      <polyline points={lineResolvedPoints} className="line-resolved" />
+                      {totalCoordinates.map((point, index) => (
+                        <circle
+                          key={`total-point-${monthLabels[index]}`}
+                          cx={point.x}
+                          cy={point.y}
+                          r={activeMonthIndex === index ? 4.5 : 3.4}
+                          className="line-point total"
+                        />
+                      ))}
+                      {resolvedCoordinates.map((point, index) => (
+                        <circle
+                          key={`resolved-point-${monthLabels[index]}`}
+                          cx={point.x}
+                          cy={point.y}
+                          r={activeMonthIndex === index ? 4.3 : 3.2}
+                          className="line-point resolved"
+                        />
+                      ))}
+                    </svg>
+                    <div className="month-labels">{monthLabels.map((label) => <span key={label}>{label}</span>)}</div>
+                    {activeMonthIndex !== null && (
+                      <div className="chart-tooltip" role="status" aria-live="polite">
+                        <strong>{monthLabels[activeMonthIndex]}</strong>
+                        <span>Total complaints: {monthBucket[activeMonthIndex]?.total || 0}</span>
+                        <span>Resolved complaints: {monthBucket[activeMonthIndex]?.resolved || 0}</span>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-              <div className="legend-row"><span><i className="dot total"></i>Total</span><span><i className="dot resolved"></i>Resolved</span></div>
+                  <div className="legend-row"><span><i className="dot total"></i>Total</span><span><i className="dot resolved"></i>Resolved</span></div>
+                </>
+              )}
             </article>
 
             <article className="panel">
