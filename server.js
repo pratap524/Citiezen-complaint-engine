@@ -14,6 +14,7 @@ const DB_CONNECT_MAX_DELAY_MS = 30000;
 let reconnectTimer = null;
 let reconnectAttempts = 0;
 let isConnecting = false;
+let connectionPromise = null;
 
 // Middleware
 app.use(express.json());
@@ -47,13 +48,18 @@ const scheduleReconnect = () => {
 const connectMongo = async () => {
   if (!MONGODB_URI) {
     console.error("❌ MONGODB_URI is not set. Complaint APIs will return 503 until MongoDB is configured.");
-    return;
+    return false;
   }
 
-  if (isConnecting || mongoose.connection.readyState === 1) {
-    return;
+  if (mongoose.connection.readyState === 1) {
+    return true;
   }
 
+  if (connectionPromise) {
+    return connectionPromise;
+  }
+
+  connectionPromise = (async () => {
   isConnecting = true;
   try {
     await mongoose.connect(MONGODB_URI, {
@@ -64,12 +70,27 @@ const connectMongo = async () => {
     });
     reconnectAttempts = 0;
     console.log("✅ Connected to MongoDB Atlas");
+    return true;
   } catch (err) {
     console.error("❌ MongoDB connection error:", err.message);
     scheduleReconnect();
+    return false;
   } finally {
     isConnecting = false;
+    connectionPromise = null;
   }
+  })();
+
+  return connectionPromise;
+};
+
+const ensureMongoConnection = async () => {
+  if (mongoose.connection.readyState === 1) {
+    return true;
+  }
+
+  const connected = await connectMongo();
+  return connected && mongoose.connection.readyState === 1;
 };
 
 mongoose.connection.on("disconnected", () => {
@@ -89,6 +110,17 @@ mongoose.connection.on("connected", () => {
 });
 
 connectMongo();
+
+app.use("/api", async (req, res, next) => {
+  const connected = await ensureMongoConnection();
+  if (!connected) {
+    return res.status(503).json({
+      message: "Database unavailable. Please try again once MongoDB reconnects.",
+    });
+  }
+
+  return next();
+});
 
 // Routes
 app.use("/api", complaintRoutes);
